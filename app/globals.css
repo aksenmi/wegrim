@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* @layer 지시어를 사용하여 컴포넌트 스타일 추가 */
+@layer components {
+  .custom-title {
+    @apply flex items-center justify-center w-full;
+  }
+
+  .custom-title h1 {
+    @apply relative inline-block text-textColor text-7xl;
+  }
+
+  .custom-title h1 span {
+    @apply relative inline-block;
+    animation: bounce 0.3s ease infinite alternate;
+    /* 텍스트 그림자 스타일을 직접 정의 */
+    text-shadow: 0 1px 0 #ccc, 0 2px 0 #ccc, 0 3px 0 #ccc, 0 4px 0 #ccc,
+      0 5px 0 #ccc, 0 6px 0 transparent, 0 7px 0 transparent,
+      0 8px 0 transparent, 0 9px 0 transparent, 0 10px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 애니메이션 지연 시간 추가 */
+  .custom-title h1 span:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  .custom-title h1 span:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+  .custom-title h1 span:nth-child(4) {
+    animation-delay: 0.3s;
+  }
+  .custom-title h1 span:nth-child(5) {
+    animation-delay: 0.4s;
+  }
+  .custom-title h1 span:nth-child(6) {
+    animation-delay: 0.5s;
+  }
+  .custom-title h1 span:nth-child(7) {
+    animation-delay: 0.6s;
+  }
+  .custom-title h1 span:nth-child(8) {
+    animation-delay: 0.7s;
+  }
+}
+
+/* 애니메이션 정의 */
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+    text-shadow: 0 1px 0 #ccc, 0 2px 0 #ccc, 0 3px 0 #ccc, 0 4px 0 #ccc,
+      0 5px 0 #ccc, 0 6px 0 #ccc, 0 7px 0 #ccc, 0 8px 0 #ccc, 0 9px 0 #ccc,
+      0 10px 10px rgba(0, 0, 0, 0.4);
+  }
+  100% {
+    transform: translateY(-20px);
+    text-shadow: 0 1px 0 #ccc, 0 2px 0 #ccc, 0 3px 0 #ccc, 0 4px 0 #ccc,
+      0 5px 0 #ccc, 0 6px 0 #ccc, 0 7px 0 #ccc, 0 8px 0 #ccc, 0 9px 0 #ccc,
+      0 50px 25px rgba(0, 0, 0, 0.2);
+  }
+}
