@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int     @id @default(autoincrement()) 
+  email      String   @unique                      
+  name       String                                
+  avatar_url String?                               
+  created_at DateTime  @default(now())             
+  updated_at DateTime  @updatedAt     
+  rooms      UserRoom[]  // UserRoom과의 관계를 설정             
+
+  @@map("users")  // 데이터베이스 테이블 이름을 "users"로 설정 (기본값은 모델 이름)
+}
+
+model Room {
+  id              Int      @id @default(autoincrement()) 
+  user_id         Int      
+  name            String
+  description     String        
+  appState        Json?    // 선택적 필드로 설정 (nullable)
+  elements        Json?    // 선택적 필드로 설정 (nullable)                                          
+  created_at DateTime  @default(now())             
+  updated_at DateTime  @updatedAt                  
+  users      UserRoom[]  // UserRoom과의 관계를 설정
+
+  @@map("room")  
+}
+
+model UserRoom {
+  user_id   Int
+  room_id   Int
+  confirmed Boolean @default(false)
+
+  // 관계 정의
+  user      User      @relation(fields: [user_id], references: [id])
+  room      Room      @relation(fields: [room_id], references: [id])
+
+  // 복합 기본 키 정의
+  @@id([user_id, room_id])  // user_id와 room_id를 복합 기본 키로 설정
+  @@map("user_room")  
+}
