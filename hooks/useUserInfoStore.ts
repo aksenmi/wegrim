@@ -1,6 +1,6 @@
-import { User } from "@/types/user";
+import { User } from "@/types/types";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { createWithEqualityFn } from "zustand/traditional";
+import { create } from "zustand";
 
 interface UserStore {
   user: User | null;
@@ -14,7 +14,7 @@ export const emptyState: UserStore = {
   clearUser: () => {},
 };
 
-export const useUserInfoStore = createWithEqualityFn<UserStore>()(
+export const useUserInfoStore = create<UserStore>()(
   persist(
     (set) => ({
       user: null,
