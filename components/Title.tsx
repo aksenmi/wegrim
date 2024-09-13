@@ -10,7 +10,7 @@ const Title = () => {
   return (
     <div className="flex items-center justify-center w-full custom-title">
       <h1
-        className={`relative inline-block text-textColor text-8xl ${titan.className}`}
+        className={`relative inline-block text-textColor    ${titan.className}`}
       >
         <span>w</span>
         <span>e</span>

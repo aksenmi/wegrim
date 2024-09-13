@@ -9,7 +9,9 @@
   }
 
   .custom-title h1 {
-    @apply relative inline-block text-textColor text-7xl;
+    @apply relative inline-block text-textColor;
+    /* 반응형 폰트 크기 */
+    @apply text-5xl sm:text-5xl md:text-6xl lg:text-7xl;
   }
 
   .custom-title h1 span {

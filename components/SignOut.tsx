@@ -2,7 +2,6 @@
 import { createSupabaseBrowserClient } from "@/lib/client/supabase";
 import { AiOutlineLogout } from "react-icons/ai";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
-import useUserStore from "@/hooks/useUserStore";
 
 const SignOut = () => {
   const supabase = createSupabaseBrowserClient();
@@ -15,7 +14,7 @@ const SignOut = () => {
   };
 
   return (
-    <header className="h-[50px] bg-white">
+    <header className="h-[50px] bg-white ml-auto mt-5 ">
       <section className="px-6 h-full">
         <div className="h-full flex flex-row justify-between items-center">
           <div
