@@ -1,10 +1,10 @@
 "use client";
-import { SocketContext } from "@/hooks/SocketContext";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import { Room } from "@/types/types";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useSocketStore } from "@/hooks/useSocketStore";
 
 const RoomList = ({
   myRooms,
@@ -22,15 +22,18 @@ const RoomList = ({
   const user = useUserInfoStore((state) => state.user);
   const router = useRouter();
   const [error, setError] = useState("");
-  const { socket, connectSocket } = useContext(SocketContext);
-  const { id } = useParams(); // 현재 방 ID 가져오기
+  const { id: roomId } = useParams(); // 현재 방 ID 가져오기
+
+  const { connectSocket, disconnectSocket, roomSockets } = useSocketStore(); // useSocketStore 사용
+  const socket = roomSockets[Number(roomId)]?.socket; // 현재 방의 소켓
 
   // 소켓 연결 및 방장 상태 체크
   useEffect(() => {
-    if (id) {
+    if (roomId && user) {
       // 현재 방에 소켓 연결 시도
-      connectSocket({ roomId: id });
+      connectSocket(Number(roomId), user);
 
+      // 방장이 방을 닫았을 때 처리
       if (socket) {
         socket.on("room-closed", (message) => {
           setError(message);
@@ -40,11 +43,12 @@ const RoomList = ({
     }
 
     return () => {
-      if (socket) {
-        socket.off("room-closed");
+      // 방 떠날 때 소켓 해제
+      if (roomId) {
+        disconnectSocket(Number(roomId));
       }
     };
-  }, [socket, id, connectSocket, router]);
+  }, [roomId, user, connectSocket, disconnectSocket, socket, router]);
 
   if (error) {
     return <div>{error}</div>;
