@@ -4,7 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const dotenv = require("dotenv");
 
-require("dotenv").config({
+dotenv.config({
   path:
     process.env.NODE_ENV === "development"
       ? ".env.development"
@@ -16,8 +16,7 @@ const ioDebug = debug("io");
 const socketDebug = debug("socket");
 
 const app = express();
-const port =
-  process.env.PORT || (process.env.NODE_ENV == "development" ? 3002 : 80); // default port to listen
+const port = process.env.PORT || 3002;
 
 app.use(express.static("public"));
 
@@ -26,216 +25,119 @@ app.get("/", (req, res) => {
 });
 
 const server = http.createServer(app);
-
 server.listen(port, () => {
   console.log(`listening on port: ${port}`);
   serverDebug(`listening on port: ${port}`);
 });
 
-try {
-  const io = new Server(server, {
-    transports: ["websocket", "polling"],
-    cors: {
-      allowedHeaders: ["Content-Type", "Authorization"],
-      origin: process.env.CORS_ORIGIN || "*",
-      credentials: true,
-    },
-    allowEIO3: true,
-  });
+const io = new Server(server, {
+  transports: ["websocket", "polling"],
+  cors: {
+    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: process.env.CORS_ORIGIN || "*",
+    credentials: true,
+  },
+  allowEIO3: true,
+});
 
-  let roomOwners = {}; // 각 방의 방장 상태를 저장
+let roomOwners = {}; // 각 방의 방장 저장
+let roomUsers = {}; // 각 방의 사용자 리스트 저장
 
-  io.on("connection", (socket) => {
-    console.log("New connection:", socket.id);
+io.on("connection", (socket) => {
+  console.log("New connection:", socket.id);
 
-    socket.on("join-room", async (roomID, userInfo) => {
-      console.log(
-        `join-room 이벤트 발생: roomID=${roomID}, userInfo=`,
-        userInfo
-      );
-      userInfo = userInfo || {}; // userInfo가 undefined일 경우를 대비
+  socket.on("join-room", (roomID, userInfo) => {
+    console.log(`User ${userInfo.name} is trying to join room: ${roomID}`);
 
-      const isOwner = userInfo.isOwner || false; // 방장 여부 기본값 설정
-      socket.join(roomID);
-      console.log("isOwner 값 확인:", isOwner);
+    if (!userInfo || !userInfo.email || !userInfo.name) {
+      console.log("Invalid user info detected");
+      socket.emit("invalid-user-info", "유효하지 않은 사용자 정보입니다.");
+      return;
+    }
 
-      // 방장일 경우 상태 저장
-      if (userInfo.isOwner) {
-        roomOwners[roomID] = true;
-        console.log(`Room ${roomID} owner connected.`);
-        socket.broadcast.to(roomID).emit("owner-connected");
-        console.log("owner-connected", "됐니?");
-      }
+    if (!roomUsers[roomID]) {
+      roomUsers[roomID] = [];
+    }
 
-      // 방장이 접속하지 않았으면 참여자에게 입장 불가 알림을 보냄
-      if (!roomOwners[roomID] && !userInfo.isOwner) {
-        socket.emit("room-closed", "방장이 아직 접속하지 않았습니다.");
-        socket.leave(roomID); // 방을 떠나게 처리
-        return;
-      }
-
-      // 방에 있는 소켓들의 유저 정보
-      const usersInRoom = await io.in(roomID).fetchSockets();
-
-      console.log(usersInRoom);
-
-      // 이메일과 이름을 포함한 유저 목록을 만듦
-      const userList = usersInRoom.map((userSocket) => ({
-        id: userSocket.id,
-        email: userSocket.handshake.query.email, // 소켓 연결 시 전달된 이메일
-        name: userSocket.handshake.query.name, // 소켓 연결 시 전달된 이름
-      }));
-
-      if (usersInRoom.length === 0) {
-        console.log(`No users in room ${roomID}`);
-      }
-
-      // 방장도 자신을 참여자 목록에 포함
-      if (isOwner) {
-        userList.push({
-          id: socket.id,
-          email: userInfo.email,
-          name: userInfo.name,
-        });
-      }
-      console.log("유저리스트", userList);
-
-      // 해당 방에 있는 모든 클라이언트들에게 유저 리스트를 전송
-      io.to(roomID).emit("room-user-list", userList);
-    });
-
-    socket.on(
-      "server-broadcast",
-      (roomID, updatedElements, updatedAppState) => {
-        socket.broadcast.to(roomID).emit("client-broadcast", {
-          elements: updatedElements,
-          appState: updatedAppState,
-        });
-      }
+    // 기존에 같은 이메일을 가진 사용자가 있으면 제거
+    const existingUserIndex = roomUsers[roomID]?.findIndex(
+      (user) => user.email === userInfo.email
     );
 
-    socket.on("disconnect", async () => {
-      const rooms = Array.from(socket.rooms);
-      for (const roomID of rooms) {
-        if (roomOwners[roomID] && socket.handshake.query.isOwner) {
-          delete roomOwners[roomID]; // 방장이 나갔을 때 상태 제거
-          console.log(`Room ${roomID} owner disconnected.`);
-        }
-        const usersInRoom = await io.in(roomID).fetchSockets();
-        const userList = usersInRoom.map((userSocket) => ({
-          id: userSocket.id,
-          email: userSocket.handshake.query.email,
-          name: userSocket.handshake.query.name,
-        }));
-        io.to(roomID).emit("room-user-list", userList);
-      }
+    if (existingUserIndex !== -1) {
+      console.log(
+        `Duplicate email detected for ${userInfo.email}, replacing existing user.`
+      );
+      roomUsers[roomID].splice(existingUserIndex, 1); // 기존 사용자 제거
+    }
+
+    const isOwner = userInfo.isOwner || false;
+    socket.join(roomID);
+
+    if (isOwner) {
+      roomOwners[roomID] = socket.id; // 방장을 저장
+      console.log(`Owner connected for room: ${roomID}`);
+      socket.broadcast.to(roomID).emit("owner-connected");
+    }
+
+    // 새로운 사용자 추가
+    roomUsers[roomID].push({
+      id: socket.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      isOwner,
     });
+
+    console.log("roomUsers[roomID]", roomUsers[roomID]);
+
+    // 사용자 목록을 방에 있는 모든 사용자에게 전송
+    io.to(roomID).emit("room-user-list", roomUsers[roomID]);
   });
 
-  // const io = new Server(server, {
-  //   transports: ["websocket", "polling"],
-  //   cors: {
-  //     allowedHeaders: ["Content-Type", "Authorization"],
-  //     origin: process.env.CORS_ORIGIN || "*",
-  //     credentials: true,
-  //   },
-  //   allowEIO3: true,
-  // });
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
 
-  // console.log("소켓 서버 초기화 완료!");
+    const roomID = socket.data.roomID;
 
-  // io.on("connection", (socket) => {
-  //   console.log("New socket connection:", socket.id);
-  //   ioDebug("connection established!");
-  //   io.to(`${socket.id}`).emit("init-room");
-  //   console.log("New socket connection:", socket.id);
+    if (roomID && roomUsers[roomID]) {
+      roomUsers[roomID] = roomUsers[roomID].filter(
+        (user) => user.id !== socket.id
+      );
+      io.to(roomID).emit("room-user-list", roomUsers[roomID]);
 
-  //   socket.on("join-room", async (roomID) => {
-  //     socketDebug(`${socket.id} has joined ${roomID}`);
-  //     await socket.join(roomID);
-  //     const sockets = await io.in(roomID).fetchSockets();
-  //     if (sockets.length <= 1) {
-  //       io.to(`${socket.id}`).emit("first-in-room");
-  //     } else {
-  //       socketDebug(`${socket.id} new-user emitted to room ${roomID}`);
-  //       socket.broadcast.to(roomID).emit("new-user", socket.id);
-  //     }
+      if (roomUsers[roomID].length === 0) {
+        delete roomUsers[roomID];
+      }
+    }
+  });
 
-  //     io.in(roomID).emit(
-  //       "room-user-change",
-  //       sockets.map((socket) => socket.id)
-  //     );
-  //   });
+  socket.on("server-broadcast", (roomID, updatedElements, isOwner) => {
+    console.log(`방장 브로드캐스트: ${roomID}, isOwner: ${isOwner}`);
+    if (isOwner) {
+      console.log("client-broadcast 이벤트 전송 중");
+      io.to(roomID).emit("client-broadcast", {
+        elements: updatedElements,
+      });
+      console.log("client-broadcast 이벤트 전송됨");
+    } else {
+      socket.emit("not-authorized", "방장만 그림을 수정할 수 있습니다.");
+    }
+  });
 
-  //   socket.on("server-broadcast", (roomID, encryptedData, iv) => {
-  //     socketDebug(`${socket.id} sends update to ${roomID}`);
-  //     socket.broadcast.to(roomID).emit("client-broadcast", encryptedData, iv);
-  //   });
+  // 메시지 전송 핸들러 추가
+  socket.on("send-message", (roomID, message, userInfo) => {
+    console.log(
+      `Message received from ${userInfo.name} in room ${roomID}: ${message}`
+    );
 
-  //   socket.on("server-volatile-broadcast", (roomID, encryptedData, iv) => {
-  //     socketDebug(`${socket.id} sends volatile update to ${roomID}`);
-  //     socket.volatile.broadcast
-  //       .to(roomID)
-  //       .emit("client-broadcast", encryptedData, iv);
-  //   });
+    const messageData = {
+      message: message,
+      user: userInfo.name,
+      timestamp: new Date().toISOString(),
+    };
 
-  //   socket.on("user-follow", async (payload) => {
-  //     const roomID = `follow@${payload.userToFollow.socketId}`;
-
-  //     switch (payload.action) {
-  //       case "FOLLOW": {
-  //         await socket.join(roomID);
-  //         const sockets = await io.in(roomID).fetchSockets();
-  //         const followedBy = sockets.map((socket) => socket.id);
-
-  //         io.to(payload.userToFollow.socketId).emit(
-  //           "user-follow-room-change",
-  //           followedBy
-  //         );
-  //         break;
-  //       }
-  //       case "UNFOLLOW": {
-  //         await socket.leave(roomID);
-  //         const sockets = await io.in(roomID).fetchSockets();
-  //         const followedBy = sockets.map((socket) => socket.id);
-
-  //         io.to(payload.userToFollow.socketId).emit(
-  //           "user-follow-room-change",
-  //           followedBy
-  //         );
-  //         break;
-  //       }
-  //     }
-  //   });
-
-  //   socket.on("disconnecting", async () => {
-  //     socketDebug(`${socket.id} has disconnected`);
-  //     for (const roomID of Array.from(socket.rooms)) {
-  //       const otherClients = (await io.in(roomID).fetchSockets()).filter(
-  //         (_socket) => _socket.id !== socket.id
-  //       );
-
-  //       const isFollowRoom = roomID.startsWith("follow@");
-
-  //       if (!isFollowRoom && otherClients.length > 0) {
-  //         socket.broadcast.to(roomID).emit(
-  //           "room-user-change",
-  //           otherClients.map((socket) => socket.id)
-  //         );
-  //       }
-
-  //       if (isFollowRoom && otherClients.length === 0) {
-  //         const socketId = roomID.replace("follow@", "");
-  //         io.to(socketId).emit("broadcast-unfollow");
-  //       }
-  //     }
-  //   });
-
-  //   socket.on("disconnect", () => {
-  //     socket.removeAllListeners();
-  //     socket.disconnect();
-  //   });
-  // });
-} catch (error) {
-  console.error(error);
-}
+    // 해당 방에 있는 모든 클라이언트에게 메시지 전달
+    io.to(roomID).emit("receive-message", messageData);
+    console.log(`Broadcasted message to room ${roomID}:`, messageData);
+  });
+});
