@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import useCheckOwnership from "@/hooks/useCheckOwnership";
@@ -8,192 +8,172 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 import { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types";
 import useRoomData from "@/hooks/useRoomData";
 import { useSocketStore } from "@/hooks/useSocketStore";
-import { SocketContext } from "@/hooks/SocketContext";
+import _ from "lodash";
 
 export default function Draw() {
   const { id: roomId } = useParams();
   const currentUser = useUserInfoStore((state) => state.user);
   const isOwner = useCheckOwnership(currentUser?.email, Number(roomId));
   const [loading, setLoading] = useState(true);
-  const [initialData, setInitialData] = useState(null);
+  const [elements, setElements] = useState<any[]>([]);
+  const [initialData, setInitialData] = useState<{ elements: any[] } | null>(
+    null
+  );
   const [hasChanged, setHasChanged] = useState(false);
   const [showSavedMessage, setShowSavedMessage] = useState(false);
-  const [excalidrawAPI, setExcalidrawAPI] = useState(null);
+  const [excalidrawAPI, setExcalidrawAPI] =
+    useState<ExcalidrawImperativeAPI | null>(null);
   const [viewModeEnabled, setViewModeEnabled] = useState(true);
+  const [pendingElements, setPendingElements] = useState<any[] | null>(null); // 임시로 저장할 pending elements
 
   const roomData = useRoomData(Number(roomId));
-  const users = roomData?.userInfos;
+  const { connectSocket, broadcastDrawing, onClientBroadcast, roomSockets } =
+    useSocketStore();
+  const socketState = roomSockets[Number(roomId)] || {
+    socket: null,
+    isConnected: false,
+  };
+  const { socket, isConnected } = socketState;
+  const lastBroadcastRef = useRef<number>(Date.now());
 
-  const { socket, isConnected } = useContext(SocketContext); // Context API로 소켓 정보 가져오기
-
+  // 방장 여부에 따라 편집 모드 설정
   useEffect(() => {
-    // 상태 업데이트는 반드시 useEffect 내부에서 처리
-    if (users && users.length > 0) {
-      const newCollaborators = new Map();
-
-      users.forEach((user) => {
-        newCollaborators.set(user.id, {
-          username: user.name,
-          avatarUrl: user.avatar_url,
-          email: user.email,
-        });
-      });
-    }
-  }, [users]);
-
-  useEffect(() => {
-    if (isOwner) {
-      setViewModeEnabled(false);
-    } else {
-      setViewModeEnabled(true);
-    }
+    setViewModeEnabled(!isOwner);
   }, [isOwner]);
 
-  // 소켓으로부터 받은 업데이트를 Excalidraw에 반영 (elements와 appState 함께 업데이트)
+  // 소켓으로부터 받은 업데이트를 Excalidraw에 반영
   const handleReceiveUpdate = useCallback(
-    (updatedElements, updatedAppState) => {
+    (updatedElements) => {
+      setElements(updatedElements);
+
       if (excalidrawAPI) {
-        // API가 null이 아닐 때만 실행
+        console.log("Updating Excalidraw scene with received elements");
         excalidrawAPI.updateScene({
           elements: updatedElements,
-          appState: updatedAppState,
+          appState: {}, // 필요 시 appState 추가
         });
+      } else {
+        console.log(
+          "Excalidraw API not ready. Saving elements to apply later."
+        );
+        setPendingElements(updatedElements); // API 준비 전까지 임시 저장
       }
     },
     [excalidrawAPI]
   );
 
-  // // 소켓 설정 및 데이터 수신 핸들러 연결
-  // const socket = useSocket(roomId, currentUser, handleReceiveUpdate);
+  // Excalidraw API가 설정되면 pending elements 적용
+  useEffect(() => {
+    if (excalidrawAPI && pendingElements) {
+      console.log("Applying pending elements to Excalidraw");
+      excalidrawAPI.updateScene({
+        elements: pendingElements,
+        appState: {}, // 필요 시 추가
+      });
+      setPendingElements(null); // 적용 후 초기화
+    }
+  }, [excalidrawAPI, pendingElements]);
 
-  // 소켓 이벤트 리스너 설정 (데이터 수신 시 업데이트 반영)
+  // 스토어의 소켓 이벤트 리스너 설정
   useEffect(() => {
     if (isConnected && socket) {
-      console.log("Socket is connected, setting up listeners...");
-      socket.on("client-broadcast", (updatedData) => {
-        handleReceiveUpdate(updatedData.elements, updatedData.appState);
-      });
+      console.log("Zustand 소켓 이벤트 리스너 등록 중");
+
+      onClientBroadcast(Number(roomId), handleReceiveUpdate);
+
+      return () => {
+        console.log("컴포넌트 언마운트 시 소켓 리스너 해제");
+      };
     }
+  }, [socket, isConnected, roomId, onClientBroadcast, handleReceiveUpdate]);
 
-    return () => {
-      if (socket) {
-        socket.off("client-broadcast");
-      }
-    };
-  }, [socket, isConnected, handleReceiveUpdate]);
-
-  const loadRoomStateFromServer = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/rooms/${roomId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch room state");
-      }
-      const data = await response.json();
-      const collaborators = Array.isArray(data.appState?.collaborators)
-        ? data.appState.collaborators
-        : [];
-
-      setInitialData({
-        ...data,
-        appState: {
-          ...data.appState,
-          collaborators,
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching room state:", error);
-      setInitialData({ elements: [], appState: {} });
-    } finally {
-      setLoading(false);
-    }
-  }, [roomId]);
-
-  useEffect(() => {
-    loadRoomStateFromServer();
-  }, [roomId, loadRoomStateFromServer]);
-
-  // 그림이 변경될 때 소켓을 통해 서버로 브로드캐스트
+  // 그림 변경시 handleChange
   const handleChange = useCallback(
-    (newElements, newAppState) => {
-      setInitialData((prevData) => {
-        const isElementsChanged =
-          JSON.stringify(prevData.elements) !== JSON.stringify(newElements);
-        const isAppStateChanged =
-          JSON.stringify(prevData.appState) !== JSON.stringify(newAppState);
+    _.debounce(() => {
+      if (excalidrawAPI) {
+        const newElements = excalidrawAPI.getSceneElements() || [];
+        const elementsChanged =
+          JSON.stringify(newElements) !== JSON.stringify(elements);
 
-        if (!isElementsChanged && !isAppStateChanged) {
-          return prevData;
+        if (elementsChanged) {
+          setHasChanged(true);
+          setElements(newElements);
+
+          if (isOwner && isConnected) {
+            const now = Date.now();
+            if (now - lastBroadcastRef.current >= 1000) {
+              broadcastDrawing(Number(roomId), newElements, isOwner);
+              console.log("broadcastDrawing 송신", isOwner);
+              lastBroadcastRef.current = now;
+            }
+          }
         }
-
-        setHasChanged(true);
-
-        // 변경된 데이터를 소켓 서버로 브로드캐스트
-        if (socket) {
-          socket.emit("server-broadcast", roomId, {
-            elements: newElements,
-            appState: newAppState,
-          });
-        }
-
-        return {
-          ...prevData,
-          elements: newElements,
-          appState: newAppState,
-        };
-      });
-    },
-    [roomId, socket]
+      }
+    }, 300),
+    [isOwner, roomId, broadcastDrawing, isConnected, elements, excalidrawAPI]
   );
 
-  const saveRoomStateToServer = useCallback(async () => {
-    if (hasChanged && initialData) {
-      const dataToSave = {
-        ...initialData,
-        elements: initialData.elements,
-        appState: {
-          ...initialData.appState,
-          viewModeEnabled: undefined,
-        },
-      };
-
+  // 방 상태를 서버로부터 처음 한 번만 로드
+  useEffect(() => {
+    const loadRoomStateFromServer = async () => {
+      setLoading(true);
       try {
+        const response = await fetch(`/api/rooms/${roomId}`);
+        if (!response.ok)
+          throw new Error(`Failed to fetch room state: ${response.statusText}`);
+        const data = await response.json();
+        const loadedElements = data.elements || [];
+        setInitialData({ elements: loadedElements });
+        setElements(loadedElements);
+      } catch (error) {
+        console.error("Error fetching room state:", error);
+        setInitialData({ elements: [] });
+        setElements([]);
+      } finally {
+        setLoading(false);
+        console.log("Room state 로드 완료");
+      }
+    };
+
+    if (roomId && !initialData) {
+      loadRoomStateFromServer();
+    }
+  }, [roomId, initialData]);
+
+  // 방 상태를 서버에 저장
+  const saveRoomStateToServer = useCallback(async () => {
+    if (hasChanged && isOwner) {
+      console.log(`방 상태 저장 중: ${roomId}`);
+      try {
+        const payload = { elements };
         const response = await fetch(`/api/rooms/${roomId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(dataToSave),
+          body: JSON.stringify(payload),
         });
-
-        if (!response.ok) {
-          throw new Error("Failed to update room state");
-        }
-
-        console.log("Room state updated successfully");
+        if (!response.ok)
+          throw new Error(
+            `Failed to update room state: ${response.statusText}`
+          );
         setHasChanged(false);
+        setShowSavedMessage(true);
+        setTimeout(() => setShowSavedMessage(false), 2000);
       } catch (error) {
         console.error("Error updating room state:", error);
       }
     }
-  }, [roomId, initialData, hasChanged]);
+  }, [roomId, hasChanged, elements, isOwner]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      saveRoomStateToServer();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [saveRoomStateToServer]);
-
-  const handleSaveClick = () => {
-    saveRoomStateToServer();
-    setShowSavedMessage(true);
-
-    setTimeout(() => {
-      setShowSavedMessage(false);
-    }, 2000);
-  };
+    if (isOwner) {
+      const interval = setInterval(() => {
+        saveRoomStateToServer();
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [saveRoomStateToServer, isOwner]);
 
   if (loading || !initialData) {
     return (
@@ -204,29 +184,18 @@ export default function Draw() {
   }
 
   return (
-    <div>
-      <div className="w-full h-screen">
-        <Excalidraw
-          onChange={handleChange}
-          initialData={initialData}
-          langCode="ko-KR"
-          viewModeEnabled={viewModeEnabled}
-          excalidrawAPI={(api: ExcalidrawImperativeAPI) =>
-            setExcalidrawAPI(api)
-          }
-        />
-        <button
-          onClick={handleSaveClick}
-          className="fixed bottom-4 left-4 bg-blue-500 text-white px-4 py-2 rounded z-50"
-        >
-          칠판 저장하기
-        </button>
-        {showSavedMessage && (
-          <div className="absolute bottom-16 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-md transition-opacity duration-500 ease-in-out opacity-90">
-            저장되었습니다.
-          </div>
-        )}
-      </div>
+    <div className="w-full h-screen">
+      <Excalidraw
+        onChange={handleChange}
+        initialData={initialData}
+        langCode="ko-KR"
+        viewModeEnabled={viewModeEnabled}
+        excalidrawAPI={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
+      />
+      {isOwner && (
+        <button onClick={saveRoomStateToServer}>칠판 저장하기</button>
+      )}
+      {showSavedMessage && <div>저장되었습니다.</div>}
     </div>
   );
 }
