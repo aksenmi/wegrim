@@ -53,7 +53,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   },
 
   connectSocket: (roomId, isOwner) => {
-    const { roomSockets, disconnectSocket, startHeartbeat } = get();
+    const { roomSockets, disconnectSocket, startHeartbeat, stopHeartbeat } =
+      get();
     const currentUser = useUserInfoStore.getState().user;
 
     if (!currentUser) {
