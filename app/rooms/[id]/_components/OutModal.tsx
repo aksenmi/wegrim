@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from "react";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import { useRouter } from "next/navigation";
-import useCheckOwnership from "@/hooks/useCheckOwnership";
 
 interface OutModalProps {
   isOpen: boolean;
   onClose: () => void;
   roomId: number;
-  roomData: {};
+  isOwner: boolean;
 }
 
 const OutModal: React.FC<OutModalProps> = ({
   isOpen,
   onClose,
   roomId,
-  roomData,
+  isOwner,
 }) => {
   const currentUser = useUserInfoStore((state) => state.user);
   const router = useRouter();
-
-  const isOwner = useCheckOwnership(currentUser?.email, roomId);
 
   const handleOutConfirm = async () => {
     // 방장 여부 상태를 이미 확인했으므로 바로 사용

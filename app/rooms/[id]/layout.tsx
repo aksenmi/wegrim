@@ -3,15 +3,18 @@
 import React, { useState } from "react";
 
 import Participants from "./_components/Participants";
+import { useSearchParams } from "next/navigation";
 
 export default function AuthLayout({
   children,
   draw,
   chat,
+  modal,
 }: {
   children: React.ReactNode;
   draw: React.ReactNode;
   chat: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   return (
     <div className="flex h-screen m-2">
@@ -25,6 +28,7 @@ export default function AuthLayout({
         </div>
       </div>
       {children}
+      {modal}
     </div>
   );
 }

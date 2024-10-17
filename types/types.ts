@@ -1,11 +1,11 @@
 export interface User {
-  email: string;
-  name: string;
+  email?: string;
+  name?: string;
   id?: string;
   isOwner?: boolean;
   avatarUrl?: string;
   username?: string;
-  socketId: string;
+  socketId?: string;
 }
 
 export interface Room {

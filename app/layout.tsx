@@ -1,8 +1,7 @@
-// app/layout.tsx (혹은 RootLayout.tsx)
+// app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 import { Gowun_Dodum } from "next/font/google";
-import { SocketProvider } from "@/hooks/SocketProvider";
 
 const DoHyeon = Gowun_Dodum({ subsets: ["latin"], weight: ["400"] });
 
@@ -18,9 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={DoHyeon.className}>
-        <SocketProvider>{children}</SocketProvider>
-      </body>
+      <body className={DoHyeon.className}>{children}</body>
     </html>
   );
 }

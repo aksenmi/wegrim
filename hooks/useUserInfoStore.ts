@@ -4,7 +4,7 @@ import { create } from "zustand";
 
 interface UserStore {
   user: User | null;
-  setUser: (user: User) => void;
+  setUser: (user: User | null) => void;
   clearUser: () => void;
 }
 
@@ -23,7 +23,7 @@ export const useUserInfoStore = create<UserStore>()(
     }),
     {
       name: "userInfo",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

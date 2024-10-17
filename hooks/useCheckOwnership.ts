@@ -1,4 +1,4 @@
-//방장여부확인
+//현재 로그인한 사람이 방장인지ㄴ
 import { useState, useEffect } from "react";
 
 const useCheckOwnership = (userEmail: string | undefined, roomId: number) => {

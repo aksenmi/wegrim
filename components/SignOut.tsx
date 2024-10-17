@@ -14,18 +14,13 @@ const SignOut = () => {
   };
 
   return (
-    <header className="h-[50px] bg-white ml-auto mt-5 ">
-      <section className="px-6 h-full">
-        <div className="h-full flex flex-row justify-between items-center">
-          <div
-            onClick={handleLogout}
-            className="flex flex-row items-center gap-2 cursor-pointer"
-          >
-            <AiOutlineLogout size={30} />
-          </div>
-        </div>
-      </section>
-    </header>
+    <div
+      onClick={handleLogout}
+      className=" flex flex-col text-4xl mt-1 cursor-pointer"
+    >
+      <AiOutlineLogout size={30} />
+      <p className="text-xs mt-1 text-center">Out</p>
+    </div>
   );
 };
 
