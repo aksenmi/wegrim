@@ -9,6 +9,7 @@ import { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types";
 import useRoomData from "@/hooks/useRoomData";
 import { useSocketStore } from "@/hooks/useSocketStore";
 import _ from "lodash";
+import { ExcalidrawElement } from "@excalidraw/excalidraw/types/element/types";
 
 export default function Draw() {
   const { id: roomId } = useParams();
@@ -27,8 +28,7 @@ export default function Draw() {
   const [pendingElements, setPendingElements] = useState<any[] | null>(null); // 임시로 저장할 pending elements
 
   const roomData = useRoomData(Number(roomId));
-  const { connectSocket, broadcastDrawing, onClientBroadcast, roomSockets } =
-    useSocketStore();
+  const { broadcastDrawing, onClientBroadcast, roomSockets } = useSocketStore();
   const socketState = roomSockets[Number(roomId)] || {
     socket: null,
     isConnected: false,
@@ -43,7 +43,7 @@ export default function Draw() {
 
   // 소켓으로부터 받은 업데이트를 Excalidraw에 반영
   const handleReceiveUpdate = useCallback(
-    (updatedElements) => {
+    (updatedElements: ExcalidrawElement[]) => {
       setElements(updatedElements);
 
       if (excalidrawAPI) {
@@ -92,17 +92,19 @@ export default function Draw() {
     _.debounce(() => {
       if (excalidrawAPI) {
         const newElements = excalidrawAPI.getSceneElements() || [];
+        const mutableElements = Array.from(newElements); // 읽기 전용 배열을 변경 가능한 배열로 변환
+
         const elementsChanged =
-          JSON.stringify(newElements) !== JSON.stringify(elements);
+          JSON.stringify(mutableElements) !== JSON.stringify(elements);
 
         if (elementsChanged) {
           setHasChanged(true);
-          setElements(newElements);
+          setElements(mutableElements); // 변경 가능한 배열로 상태 설정
 
           if (isOwner && isConnected) {
             const now = Date.now();
             if (now - lastBroadcastRef.current >= 1000) {
-              broadcastDrawing(Number(roomId), newElements, isOwner);
+              broadcastDrawing(Number(roomId), mutableElements, isOwner);
               console.log("broadcastDrawing 송신", isOwner);
               lastBroadcastRef.current = now;
             }
