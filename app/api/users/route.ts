@@ -1,12 +1,13 @@
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import prisma from "@/lib/prisma/client";
-import { User } from "@/types/user";
+import { User } from "@/types/types";
+
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const body: User = await req.json();
   const { name, email, avatar_url } = body;
-  console.log(body);
+  console.log("바디", body);
 
   if (!name || !email) {
     return NextResponse.json(
