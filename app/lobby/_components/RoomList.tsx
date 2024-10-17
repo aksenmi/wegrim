@@ -29,7 +29,7 @@ const RoomList = ({
 
   useEffect(() => {
     if (roomId && user) {
-      connectSocket(Number(roomId), user);
+      connectSocket(Number(roomId), user.isOwner || false);
 
       if (socket) {
         socket.on("room-closed", (message) => {
