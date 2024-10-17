@@ -17,6 +17,11 @@ export interface Room {
   elements: object[];
 }
 
+export interface RoomInfo {
+  roomName: string;
+  roomDescription: string;
+}
+
 export interface MessageData {
   message: string;
   user: string;

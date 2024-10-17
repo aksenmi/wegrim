@@ -8,21 +8,26 @@ import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import useCheckOwnership from "@/hooks/useCheckOwnership";
 import { useSocketStore } from "@/hooks/useSocketStore";
 import MypageIcon from "@/components/MypageIcon";
+import { RoomInfo } from "@/types/types";
 
 const Participants = () => {
-  const { id: roomId } = useParams();
+  const { id } = useParams();
+  const roomId = Number(id);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isOutModalOpen, setIsOutModalOpen] = useState(false);
-  const roomData = useRoomData(Number(roomId));
+  const roomData: RoomInfo = useRoomData(roomId) || {
+    roomName: "",
+    roomDescription: "",
+  };
+
   const currentUser = useUserInfoStore((state) => state.user);
   const isOwner = useCheckOwnership(currentUser?.email, Number(roomId));
   const router = useRouter();
   const pathname = usePathname();
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const { roomSockets, connectSocket, disconnectSocket, getIsOnAir } =
     useSocketStore();
-  const socketState = roomSockets[Number(roomId)] || {
+  const socketState = roomSockets[roomId] || {
     socket: null,
     isConnected: false,
   };
@@ -32,12 +37,12 @@ const Participants = () => {
   useEffect(() => {
     if (currentUser && !isConnected && isOwner !== undefined) {
       // isOwner 값이 결정된 후에 소켓 연결
-      connectSocket(Number(roomId), isOwner);
+      connectSocket(roomId, isOwner);
     }
     // 컴포넌트 언마운트 시 소켓 해제
     return () => {
       if (isConnected) {
-        disconnectSocket(Number(roomId));
+        disconnectSocket(roomId);
       }
     };
   }, [
@@ -51,7 +56,7 @@ const Participants = () => {
   ]);
 
   // isOnAir 상태 구독
-  const isOnAir = getIsOnAir(Number(roomId));
+  const isOnAir = getIsOnAir(roomId);
 
   // roomData가 아직 null일 때 로딩 상태 처리
   if (!roomData) {
@@ -123,7 +128,6 @@ const Participants = () => {
           isOpen={isOutModalOpen}
           onClose={() => setIsOutModalOpen(false)}
           roomId={roomId}
-          roomData={roomData}
           isOwner={isOwner}
         />
       </div>
