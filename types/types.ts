@@ -26,5 +26,5 @@ export interface MessageData {
 export interface MessageDataWithDate {
   message: string;
   user: string;
-  timestamp: Date; // 변환된 Date 타입
+  timestamp: string;
 }

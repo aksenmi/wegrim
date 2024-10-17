@@ -4,7 +4,7 @@ import { useSocketStore } from "@/hooks/useSocketStore";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 import useCheckOwnership from "@/hooks/useCheckOwnership";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { MessageData, MessageDataWithDate } from "@/types/types";
+import { MessageDataWithDate } from "@/types/types";
 import dayjs from "dayjs"; // 시간 형식을 위해 dayjs를 사용할 수 있습니다.
 
 export default function Chat() {
