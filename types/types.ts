@@ -3,7 +3,7 @@ export interface User {
   name?: string;
   id?: string;
   isOwner?: boolean;
-  avatarUrl?: string;
+  avatar_url?: string;
   username?: string;
   socketId?: string;
 }
