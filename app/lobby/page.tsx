@@ -9,6 +9,7 @@ import useHydrate from "@/hooks/useHydrate";
 import AddRoom from "./_components/AddRoom";
 import RoomList from "./_components/RoomList";
 import { Room } from "@/types/types";
+import MypageIcon from "@/components/MypageIcon";
 
 const page = () => {
   const sendUserInfoToServer = async (userData: User) => {
@@ -116,8 +117,12 @@ const page = () => {
   return (
     <div className="flex justify-center bg-slate-200 h-screen items-center ">
       <div className="flex flex-col shadow-xl rounded-xl  bg-white  h-[500px] w-[400px] items-center  overflow-y-auto ">
-        <SignOut />
-        <div className="flex flex-col flex-grow items-center w-4/5 ">
+        <div className=" flex items-center justify-end w-full mr-10 mt-5 mb-5 gap-2 ">
+          <MypageIcon />
+          <SignOut />
+        </div>
+
+        <div className="flex flex-col flex-grow items-center w-full">
           <AddRoom fetchMyRooms={fetchMyRooms} />
           <RoomList
             myRooms={myRooms}
