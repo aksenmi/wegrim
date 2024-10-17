@@ -23,7 +23,17 @@ interface SocketState {
     roomId: number,
     callback: (updatedElements: any[]) => void
   ) => void;
-  sendMessage: (roomId: number, message: string) => void;
+  sendMessage: (
+    roomId: number,
+    message: string,
+    userInfo: {
+      email?: string;
+      name?: string;
+      isOwner?: boolean;
+      timestamp: string;
+    }
+  ) => void;
+
   startHeartbeat: (roomId: number) => void;
   stopHeartbeat: (roomId: number) => void;
 }
@@ -213,7 +223,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     }
   },
 
-  sendMessage: (roomId, message) => {
+  sendMessage: (roomId, message, userInfo) => {
     const { roomSockets } = get();
     const socket = roomSockets[roomId]?.socket;
     const currentUser = useUserInfoStore.getState().user;
