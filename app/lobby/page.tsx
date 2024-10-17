@@ -3,15 +3,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import "../globals.css";
 import SignOut from "@/components/SignOut";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
-import { User } from "@/types/user";
 import { createSupabaseBrowserClient } from "@/lib/client/supabase";
 import useHydrate from "@/hooks/useHydrate";
 import AddRoom from "./_components/AddRoom";
 import RoomList from "./_components/RoomList";
-import { Room } from "@/types/types";
+import { Room, User } from "@/types/types";
 import MypageIcon from "@/components/MypageIcon";
 
-const page = () => {
+const Lobbypage = () => {
   const sendUserInfoToServer = async (userData: User) => {
     try {
       const response = await fetch("/api/users", {
@@ -103,7 +102,7 @@ const page = () => {
 
   useEffect(() => {
     getUserInfo();
-  }, []);
+  }, [getUserInfo]);
 
   useEffect(() => {
     if (user && user.email) {
@@ -137,4 +136,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Lobbypage;

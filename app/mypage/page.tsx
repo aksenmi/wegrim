@@ -4,7 +4,7 @@ import SignOut from "@/components/SignOut";
 import useAuthStore from "@/hooks/useAuthStore";
 import { useUserInfoStore } from "@/hooks/useUserInfoStore";
 
-const mypage = () => {
+const Mypage = () => {
   const user = useUserInfoStore((state) => state.user);
   console.log(user);
   const provider = useAuthStore((state) => state.provider);
@@ -39,4 +39,4 @@ const mypage = () => {
   );
 };
 
-export default mypage;
+export default Mypage;
