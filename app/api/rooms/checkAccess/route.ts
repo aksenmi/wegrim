@@ -1,5 +1,5 @@
+import prisma from "@/lib/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // Prisma 사용 예시
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
