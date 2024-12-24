@@ -8,12 +8,7 @@ interface OutModalProps {
   isOwner: boolean;
 }
 
-const OutModal: React.FC<OutModalProps> = ({
-  isOpen,
-  onClose,
-  roomId,
-  isOwner,
-}) => {
+const OutModal = ({ isOpen, onClose, roomId, isOwner }: OutModalProps) => {
   const currentUser = useUserInfoStore((state) => state.user);
   const router = useRouter();
 

@@ -1,3 +1,5 @@
-export default function DefaultChat() {
+const DefaultChat = () => {
   return <div>Default Chat</div>;
-}
+};
+
+export default DefaultChat;

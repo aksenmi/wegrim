@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { MessageDataWithDate } from "@/types/types";
 import dayjs from "dayjs"; // 시간 형식을 위해 dayjs를 사용할 수 있습니다.
 
-export default function Chat() {
+const Chat = () => {
   const { id: roomId } = useParams(); // roomId를 추출
   const [message, setMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<MessageDataWithDate[]>([]);
@@ -133,4 +133,6 @@ export default function Chat() {
       </div>
     </div>
   );
-}
+};
+
+export default Chat;

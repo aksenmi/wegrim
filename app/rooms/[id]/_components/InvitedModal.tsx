@@ -11,11 +11,7 @@ interface FormValues {
   email: string;
 }
 
-const InviteModal: React.FC<InviteModalProps> = ({
-  isOpen,
-  onClose,
-  roomId,
-}) => {
+const InviteModal = ({ isOpen, onClose, roomId }: InviteModalProps) => {
   const {
     register,
     handleSubmit,

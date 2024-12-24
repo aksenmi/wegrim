@@ -11,7 +11,7 @@ import { useSocketStore } from "@/hooks/useSocketStore";
 import _ from "lodash";
 import { ExcalidrawElement } from "@excalidraw/excalidraw/types/element/types";
 
-export default function Draw() {
+const Draw = () => {
   const { id: roomId } = useParams();
   const currentUser = useUserInfoStore((state) => state.user);
   const isOwner = useCheckOwnership(currentUser?.email, Number(roomId));
@@ -200,4 +200,6 @@ export default function Draw() {
       {showSavedMessage && <div>저장되었습니다.</div>}
     </div>
   );
-}
+};
+
+export default Draw;
